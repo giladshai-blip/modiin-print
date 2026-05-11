@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -417,16 +418,22 @@ async function handleFile(e) {
   if (!file) return;
   e.target.value = '';
 
-  const allowed = ['image/jpeg','image/png','image/webp','image/gif'];
+  const allowed = ['application/pdf','image/jpeg','image/png','image/webp','image/gif'];
   if (!allowed.includes(file.type)) {
-    showToast('⚠ סוג קובץ לא נתמך — השתמש ב-JPG, PNG, WebP');
+    showToast('⚠ סוג קובץ לא נתמך — השתמש ב-PDF, JPG, PNG, WebP');
     return;
   }
 
   setScanning(true);
   try {
-    const b64data = await readAsBase64raw(file);
-    const data = await analyzeDocument(b64data, file.type);
+    let b64data, mimeType;
+    if (file.type === 'application/pdf') {
+      ({ b64data, mimeType } = await pdfToImageBase64(file));
+    } else {
+      b64data = await readAsBase64raw(file);
+      mimeType = file.type;
+    }
+    const data = await analyzeDocument(b64data, mimeType);
     data.sourceFile = file.name;
 
     // בדיקת כפילות לפי מספר הזמנה — אחרי הסריקה
@@ -491,6 +498,21 @@ function setScanning(on) {
   } else {
     icon.outerHTML = '<svg id="uploadIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>';
   }
+}
+
+async function pdfToImageBase64(file) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const page = await pdf.getPage(1);
+  const viewport = page.getViewport({ scale: 2 });
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+  const dataUrl = canvas.toDataURL('image/png');
+  return { b64data: dataUrl.split(',')[1], mimeType: 'image/png' };
 }
 
 // מחזיר base64 נקי (ללא prefix data:...)
