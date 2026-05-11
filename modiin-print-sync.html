@@ -258,7 +258,7 @@
     <label class="btn-upload" id="uploadLabel">
       <svg id="uploadIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
       <span id="uploadText">סרוק מסמך</span>
-      <input type="file" id="fileInput" accept="application/pdf,image/*" style="display:none" onchange="handleFile(event)" />
+      <input type="file" id="fileInput" accept="application/pdf,image/jpeg,image/png,image/webp" style="display:none" onchange="handleFile(event)" />
     </label>
   </header>
 
@@ -332,9 +332,22 @@
   <span id="toastMsg"></span>
 </div>
 
-<script>
+<script type="module">
+// ── Expose functions to global scope for inline handlers ──
+window.$ = id => document.getElementById(id);
+window.switchTab = switchTab;
+window.handleFile = handleFile;
+window.exportCSV = exportCSV;
+window.saveOrder = saveOrder;
+window.closePendingModal = closePendingModal;
+window.closeModalBg = closeModalBg;
+window.toggleRow = toggleRow;
+window.deleteOrder = deleteOrder;
+window.updateItemStatus = updateItemStatus;
+window.renderTable = renderTable;
+window.forceUpload = forceUpload;
 // ── Config — Fill these before use ──
-const GEMINI_API_KEY = ""; // 🔑 הכנס מפתח Gemini
+const GEMINI_API_KEY = "AIzaSyAZ4jb-FgYK58aZ5L1x2nUULrx54cqKfdE";
 const FIREBASE_CONFIG = null; // 📦 או null לשימוש ב-localStorage
 
 // ── State ──
@@ -375,66 +388,144 @@ async function handleFile(e) {
   const file = e.target.files[0];
   if (!file) return;
   e.target.value = '';
+
+  const allowed = ['application/pdf','image/jpeg','image/png','image/webp','image/gif'];
+  if (!allowed.includes(file.type)) {
+    showToast('⚠ סוג קובץ לא נתמך — השתמש ב-PDF, JPG, PNG');
+    return;
+  }
+
   setScanning(true);
   try {
-    const b64 = await readAsBase64(file);
-    const data = await analyzeDocument(b64, file.type);
+    const b64data = await readAsBase64raw(file);
+    const data = await analyzeDocument(b64data, file.type);
+    data.sourceFile = file.name;
+
+    // בדיקת כפילות לפי מספר הזמנה — אחרי הסריקה
+    const duplicate = records.find(r => r.orderNumber && r.orderNumber === data.orderNumber);
+    if (duplicate) {
+      showDuplicateWarning(data.orderNumber, duplicate);
+      return;
+    }
+
     pendingData = data;
     openPendingModal(data);
   } catch(err) {
     showToast('⚠ שגיאה: ' + err.message);
-  } finally { setScanning(false); }
+  } finally {
+    setScanning(false);
+  }
+}
+
+function showDuplicateWarning(orderNumber, existing) {
+  const old = $('dupWarning');
+  if (old) old.remove();
+
+  const div = document.createElement('div');
+  div.id = 'dupWarning';
+  div.style.cssText = `
+    position:fixed; top:80px; left:50%; transform:translateX(-50%);
+    background:#fff; border:1px solid #fbbc04; border-radius:16px;
+    padding:20px 24px; box-shadow:0 8px 24px rgba(0,0,0,.15);
+    z-index:200; min-width:340px; direction:rtl;
+    animation: slideDown .25s cubic-bezier(.4,0,.2,1);
+  `;
+  div.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <span style="font-size:20px">⚠️</span>
+      <b style="font-size:14px;color:#202124">הזמנה זו כבר קיימת במערכת</b>
+    </div>
+    <p style="font-size:12px;color:#5f6368;margin-bottom:4px">מספר הזמנה: <b>#${orderNumber}</b></p>
+    <p style="font-size:12px;color:#5f6368;margin-bottom:16px">לקוח: <b>${existing.client||'—'}</b> | תאריך: <b>${existing.date||'—'}</b></p>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="$('dupWarning').remove(); pendingData=null;" style="padding:8px 18px;border:1px solid #e8eaed;border-radius:100px;background:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">ביטול</button>
+      <button onclick="forceUpload()" style="padding:8px 18px;background:#ea4335;color:#fff;border:none;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">הוסף בכל זאת</button>
+    </div>
+  `;
+  document.body.appendChild(div);
+}
+
+function forceUpload() {
+  $('dupWarning')?.remove();
+  // pendingData כבר מוכן — פותחים את המודל ישירות
+  if (pendingData) openPendingModal(pendingData);
 }
 
 function setScanning(on) {
-  $('uploadLabel').querySelector('input').disabled = on;
-  $('uploadText').textContent = on ? 'סורק...' : 'סרוק מסמך';
+  const inp = document.querySelector('#uploadLabel input');
+  if (inp) inp.disabled = on;
+  const txt = $('uploadText');
+  if (txt) txt.textContent = on ? 'סורק...' : 'סרוק מסמך';
   const icon = $('uploadIcon');
-  if (on) { icon.outerHTML = '<span id="uploadIcon" class="spinner"></span>'; }
-  else { $('uploadIcon').outerHTML = '<svg id="uploadIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>'; }
+  if (!icon) return;
+  if (on) {
+    icon.outerHTML = '<span id="uploadIcon" class="spinner"></span>';
+  } else {
+    icon.outerHTML = '<svg id="uploadIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>';
+  }
 }
 
-function readAsBase64(file) {
+// מחזיר base64 נקי (ללא prefix data:...)
+function readAsBase64raw(file) {
   return new Promise((res, rej) => {
     const r = new FileReader();
-    r.onload = () => res(r.result);
+    r.onload  = () => res(r.result.split(',')[1]);
     r.onerror = () => rej(new Error('קריאת קובץ נכשלה'));
     r.readAsDataURL(file);
   });
 }
 
-async function analyzeDocument(dataUrl, mimeType) {
+async function analyzeDocument(b64data, mimeType) {
+  // ── Demoללא מפתח ──
   if (!GEMINI_API_KEY) {
-    // Mock data for demo without API key
     return {
-      vendor: 'ספק לדוגמה', orderNumber: '1001', client: 'לקוח לדוגמה', date: new Date().toISOString().split('T')[0],
+      vendor: 'דפוס מודיעין',
+      orderNumber: '517191',
+      client: 'בית כנסת צעירי הכרמים',
+      date: '2026-01-01',
       items: [
-        { description: 'הדפסת כרטיסי ביקור', quantity: 500, unitPrice: 0.5, total: 250 },
-        { description: 'עיצוב לוגו', quantity: 1, unitPrice: 800, total: 800 }
+        { description: '6 פנקסי קבלה 25/3 A5',              quantity: 1, unitPrice: 170, total: 170 },
+        { description: '500 מעטפות 10/15 ס"מ מודפס בפרוצס', quantity: 1, unitPrice: 350, total: 350 },
+        { description: 'שלט PVC 20/30 ס"מ',                  quantity: 1, unitPrice: 25,  total: 25  }
       ]
     };
   }
-  const prompt = `Analyze this Hebrew document (Order/Quote). Extract ALL info.
-Return ONLY a valid JSON object (no markdown, no backticks):
-{"vendor":"...","orderNumber":"...","client":"...","date":"YYYY-MM-DD","items":[{"description":"...","quantity":1,"unitPrice":10,"total":10}]}`;
+
+  // ── Gemini — PDF ותמונות נשלחים כ-inlineData ישירות ──
+  const prompt =
+`אתה מנתח מסמכי הזמנות והצעות מחיר בעברית.
+חלץ את המידע מהמסמך המצורף והחזר JSON בלבד, ללא markdown:
+{"vendor":"שם הספק","orderNumber":"מספר הזמנה","client":"שם הלקוח","date":"YYYY-MM-DD","items":[{"description":"תיאור פריט","quantity":1,"unitPrice":100,"total":100}]}
+חשוב: כלול רק שורות פריטים (מוצרים/שירותים) — לא שורות סיכום כמו מע"מ, הנחה, סה"כ.`;
 
   const body = {
-    contents: [{ parts: [
-      { text: prompt },
-      { inlineData: { mimeType, data: dataUrl.split(',')[1] } }
-    ]}],
-    generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
+    contents: [{
+      parts: [
+        { text: prompt },
+        { inlineData: { mimeType, data: b64data } }
+      ]
+    }],
+    generationConfig: { temperature: 0.05, maxOutputTokens: 2048 }
   };
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-    { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
   );
-  if (!res.ok) throw new Error(`API error ${res.status}`);
+
+  if (!res.ok) {
+    const errJson = await res.json().catch(() => ({}));
+    throw new Error(errJson?.error?.message || `שגיאת API ${res.status}`);
+  }
+
   const result = await res.json();
-  const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const m = text.match(/\{[\s\S]*\}/);
-  if (!m) throw new Error('לא ניתן לנתח את תשובת ה-AI');
+  const raw = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+  // נקה גרשיים markdown אם יש
+  const clean = raw.replace(/```json|```/g, '').trim();
+  const m = clean.match(/\{[\s\S]*\}/);
+  if (!m) throw new Error('תשובת ה-AI לא הכילה JSON תקין:\n' + raw.slice(0,200));
+
   const parsed = JSON.parse(m[0]);
   parsed.items = (parsed.items || []).map(it => ({ ...it, status: 'בעבודה' }));
   return parsed;
@@ -465,7 +556,14 @@ function closeModalBg(e) { if(e.target===$('modal')) closePendingModal(); }
 async function saveOrder() {
   if (!pendingData) return;
   const total = (pendingData.items||[]).reduce((s,i)=>s+Number(i.total||0),0);
-  const order = { ...pendingData, id: uid(), totalAmount: total, status: 'בעבודה', createdAt: new Date().toISOString() };
+  const order = {
+    ...pendingData,
+    id: uid(),
+    totalAmount: total,
+    status: 'בעבודה',
+    createdAt: new Date().toISOString(),
+    sourceFile: pendingData.sourceFile || ''
+  };
   order.items = order.items.map(it=>({...it, status: 'בעבודה'}));
   records.unshift(order);
   save();
