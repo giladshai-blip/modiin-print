@@ -238,6 +238,11 @@
     ייצוא CSV
   </button>
 
+  <button class="nav-item" data-tab="settings" onclick="switchTab('settings')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    הגדרות
+  </button>
+
   <div class="nav-divider"></div>
   <div class="sidebar-footer">
     <div class="avatar">צ</div>
@@ -302,6 +307,18 @@
         </div>
       </div>
     </div>
+
+    <div id="tab-settings" style="display:none">
+      <div class="table-card" style="max-width:520px">
+        <h2 style="font-size:16px;font-weight:700;margin-bottom:20px">הגדרות מערכת</h2>
+        <div style="margin-bottom:8px;font-size:13px;font-weight:600;color:var(--text-2)">מפתח Groq API</div>
+        <div style="display:flex;gap:8px">
+          <input id="groqKeyInput" type="password" placeholder="gsk_..." style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;outline:none" />
+          <button onclick="saveGroqKey()" style="padding:10px 20px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">שמור</button>
+        </div>
+        <p style="margin-top:8px;font-size:11px;color:var(--text-3)">המפתח נשמר בדפדפן בלבד ולא נשלח לשום שרת. קבל מפתח חינם ב-console.groq.com</p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -346,9 +363,9 @@ window.deleteOrder = deleteOrder;
 window.updateItemStatus = updateItemStatus;
 window.renderTable = renderTable;
 window.forceUpload = forceUpload;
-// ── Config — Fill these before use ──
-const GEMINI_API_KEY = "AIzaSyAZ4jb-FgYK58aZ5L1x2nUULrx54cqKfdE";
+// ── Config ──
 const FIREBASE_CONFIG = null; // 📦 או null לשימוש ב-localStorage
+const getGroqKey = () => localStorage.getItem('groq_api_key') || '';
 
 // ── State ──
 let records = JSON.parse(localStorage.getItem('modiin_orders') || '[]');
@@ -375,12 +392,23 @@ function badgeClass(s) {
 
 // ── Tab ──
 function switchTab(tab) {
-  ['dashboard','records'].forEach(t => {
+  ['dashboard','records','settings'].forEach(t => {
     $('tab-' + t).style.display = t === tab ? 'block' : 'none';
     document.querySelector(`[data-tab="${t}"]`)?.classList.toggle('active', t === tab);
   });
   if (tab === 'dashboard') renderDashboard();
   if (tab === 'records') renderTable();
+  if (tab === 'settings') {
+    const inp = $('groqKeyInput');
+    if (inp) inp.value = localStorage.getItem('groq_api_key') || '';
+  }
+}
+
+function saveGroqKey() {
+  const val = $('groqKeyInput').value.trim();
+  if (!val) { showToast('⚠ הכנס מפתח תקין'); return; }
+  localStorage.setItem('groq_api_key', val);
+  showToast('✓ המפתח נשמר בהצלחה');
 }
 
 // ── File Upload & AI ──
@@ -389,9 +417,9 @@ async function handleFile(e) {
   if (!file) return;
   e.target.value = '';
 
-  const allowed = ['application/pdf','image/jpeg','image/png','image/webp','image/gif'];
+  const allowed = ['image/jpeg','image/png','image/webp','image/gif'];
   if (!allowed.includes(file.type)) {
-    showToast('⚠ סוג קובץ לא נתמך — השתמש ב-PDF, JPG, PNG');
+    showToast('⚠ סוג קובץ לא נתמך — השתמש ב-JPG, PNG, WebP');
     return;
   }
 
@@ -476,8 +504,8 @@ function readAsBase64raw(file) {
 }
 
 async function analyzeDocument(b64data, mimeType) {
-  // ── Demoללא מפתח ──
-  if (!GEMINI_API_KEY) {
+  const GROQ_API_KEY = getGroqKey();
+  if (!GROQ_API_KEY) {
     return {
       vendor: 'דפוס מודיעין',
       orderNumber: '517191',
@@ -491,27 +519,30 @@ async function analyzeDocument(b64data, mimeType) {
     };
   }
 
-  // ── Gemini — PDF ותמונות נשלחים כ-inlineData ישירות ──
   const prompt =
 `אתה מנתח מסמכי הזמנות והצעות מחיר בעברית.
-חלץ את המידע מהמסמך המצורף והחזר JSON בלבד, ללא markdown:
+חלץ את המידע מהתמונה המצורפת והחזר JSON בלבד, ללא markdown:
 {"vendor":"שם הספק","orderNumber":"מספר הזמנה","client":"שם הלקוח","date":"YYYY-MM-DD","items":[{"description":"תיאור פריט","quantity":1,"unitPrice":100,"total":100}]}
 חשוב: כלול רק שורות פריטים (מוצרים/שירותים) — לא שורות סיכום כמו מע"מ, הנחה, סה"כ.`;
 
   const body = {
-    contents: [{
-      parts: [
-        { text: prompt },
-        { inlineData: { mimeType, data: b64data } }
+    model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'text', text: prompt },
+        { type: 'image_url', image_url: { url: `data:${mimeType};base64,${b64data}` } }
       ]
     }],
-    generationConfig: { temperature: 0.05, maxOutputTokens: 2048 }
+    temperature: 0.05,
+    max_tokens: 2048
   };
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
-  );
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
+    body: JSON.stringify(body)
+  });
 
   if (!res.ok) {
     const errJson = await res.json().catch(() => ({}));
@@ -519,9 +550,8 @@ async function analyzeDocument(b64data, mimeType) {
   }
 
   const result = await res.json();
-  const raw = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const raw = result.choices?.[0]?.message?.content || '';
 
-  // נקה גרשיים markdown אם יש
   const clean = raw.replace(/```json|```/g, '').trim();
   const m = clean.match(/\{[\s\S]*\}/);
   if (!m) throw new Error('תשובת ה-AI לא הכילה JSON תקין:\n' + raw.slice(0,200));
