@@ -127,21 +127,49 @@
   .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; color: var(--text-3); gap: 12px; }
   .empty svg { opacity: .35; }
   .empty p { font-size: 14px; font-weight: 500; }
+  .menu-btn { display: none; align-items: center; justify-content: center; width: 40px; height: 40px; background: none; border: none; border-radius: 10px; cursor: pointer; color: var(--text-2); transition: background .15s; flex-shrink: 0; }
+  .menu-btn:hover { background: var(--bg); }
+  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 39; animation: fadeIn .2s; }
+  .sidebar-overlay.visible { display: block; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes zoomIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
   @keyframes slideDown { from { opacity: 0; transform: translateX(-50%) translateY(-12px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
   @keyframes slideUp { to { opacity: 0; transform: translateX(-50%) translateY(-12px); } }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (max-width: 768px) {
-    #sidebar { position: fixed; right: 0; top: 0; bottom: 0; z-index: 40; transform: translateX(110%); }
+    #sidebar { position: fixed; right: 0; top: 0; bottom: 0; z-index: 40; transform: translateX(110%); box-shadow: -4px 0 24px rgba(0,0,0,.14); }
     #sidebar.open { transform: translateX(0); }
-    .charts-grid { grid-template-columns: 1fr; }
-    .gauges-grid { grid-template-columns: repeat(2, 1fr); }
+    .menu-btn { display: flex; }
+    header { padding: 0 16px; gap: 8px; }
+    .search-wrap { max-width: none; }
+    #content { padding: 16px; }
+    .charts-grid { grid-template-columns: 1fr; gap: 12px; }
+    .gauges-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
+    .gauge-card { padding: 16px 12px; }
+    .chart-card { padding: 16px; }
+    .chart-area { height: 160px; }
+    .line-svg { height: 160px; }
     .meta-grid { grid-template-columns: 1fr 1fr; }
+    .modal { padding: 20px 16px; border-radius: 16px; max-height: 90dvh; overflow-y: auto; }
+    .items-list { max-height: 180px; }
+    .modal-bg { padding: 12px; }
+    td { padding: 12px 14px; }
+    thead th { padding: 10px 14px; }
+    #tab-settings .table-card { padding: 20px 16px; }
+  }
+  @media (max-width: 480px) {
+    .search-wrap input { font-size: 12px; padding: 9px 36px 9px 10px; }
+    .btn-upload { padding: 9px 14px; gap: 6px; font-size: 12px; }
+    .meta-grid { grid-template-columns: 1fr; }
+    .modal-footer { flex-direction: column; align-items: stretch; gap: 14px; }
+    .btn-save { width: 100%; text-align: center; }
+    .gauges-grid { grid-template-columns: 1fr 1fr; }
+    table { min-width: 520px; }
   }
 </style>
 </head>
 <body>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 <aside id="sidebar">
   <div class="logo">
     <div class="logo-icon">🖨</div>
@@ -172,6 +200,9 @@
 </aside>
 <div id="main">
   <header>
+    <button class="menu-btn" id="menuBtn" onclick="toggleSidebar()" aria-label="תפריט">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
     <div class="search-wrap">
       <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="text" id="searchInput" placeholder="חיפוש לקוח או מספר הזמנה..." oninput="renderTable()" />
@@ -205,7 +236,7 @@
       </div>
     </div>
     <div id="tab-settings" style="display:none">
-      <div class="table-card" style="max-width:520px">
+      <div class="table-card" style="max-width:520px;padding:28px 24px">
         <h2 style="font-size:16px;font-weight:700;margin-bottom:20px">הגדרות מערכת</h2>
         <div style="margin-bottom:8px;font-size:13px;font-weight:600;color:var(--text-2)">מפתח Groq API</div>
         <div style="display:flex;gap:8px">
@@ -252,6 +283,8 @@ window.renderTable = renderTable;
 window.forceUpload = forceUpload;
 window.saveGroqKey = saveGroqKey;
 window.clearAllData = clearAllData;
+window.toggleSidebar = toggleSidebar;
+window.closeSidebar = closeSidebar;
 
 const FIREBASE_CONFIG = null;
 const getGroqKey = () => localStorage.getItem('groq_api_key') || '';
@@ -272,6 +305,18 @@ function showToast(msg) {
 }
 function badgeClass(s) { return s==='בעבודה'?'badge-blue':s==='טופל חלקית'?'badge-yellow':s==='הושלם'?'badge-green':'badge-gray'; }
 
+function openSidebar() {
+  $('sidebar').classList.add('open');
+  $('sidebarOverlay').classList.add('visible');
+}
+function closeSidebar() {
+  $('sidebar').classList.remove('open');
+  $('sidebarOverlay').classList.remove('visible');
+}
+function toggleSidebar() {
+  $('sidebar').classList.contains('open') ? closeSidebar() : openSidebar();
+}
+
 function switchTab(tab) {
   ['dashboard','records','settings'].forEach(t => {
     $('tab-'+t).style.display = t===tab?'block':'none';
@@ -280,6 +325,7 @@ function switchTab(tab) {
   if (tab==='dashboard') renderDashboard();
   if (tab==='records') renderTable();
   if (tab==='settings') { const inp=$('groqKeyInput'); if(inp) inp.value=localStorage.getItem('groq_api_key')||''; }
+  if (window.innerWidth <= 768) closeSidebar();
 }
 
 function clearAllData() {
