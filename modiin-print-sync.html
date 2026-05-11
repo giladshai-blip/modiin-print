@@ -351,7 +351,6 @@
 </div>
 
 <script type="module">
-// ── Expose functions to global scope for inline handlers ──
 window.$ = id => document.getElementById(id);
 window.switchTab = switchTab;
 window.handleFile = handleFile;
@@ -365,17 +364,15 @@ window.updateItemStatus = updateItemStatus;
 window.renderTable = renderTable;
 window.forceUpload = forceUpload;
 window.saveGroqKey = saveGroqKey;
-// ── Config ──
+
 const FIREBASE_CONFIG = null;
 const getGroqKey = () => localStorage.getItem('groq_api_key') || '';
 
-// ── State ──
 let records = JSON.parse(localStorage.getItem('modiin_orders') || '[]');
 let pendingData = null;
 let expandedId = null;
 const STATUS = ['בעבודה','טופל חלקית','הושלם','מבוטל'];
 
-// ── Utils ──
 const fmt = n => Number(n || 0).toLocaleString('he-IL');
 const save = () => localStorage.setItem('modiin_orders', JSON.stringify(records));
 const uid  = () => Math.random().toString(36).slice(2,10);
@@ -392,7 +389,6 @@ function badgeClass(s) {
   return s === 'בעבודה' ? 'badge-blue' : s === 'טופל חלקית' ? 'badge-yellow' : s === 'הושלם' ? 'badge-green' : 'badge-gray';
 }
 
-// ── Tab ──
 function switchTab(tab) {
   ['dashboard','records','settings'].forEach(t => {
     $('tab-' + t).style.display = t === tab ? 'block' : 'none';
@@ -413,7 +409,6 @@ function saveGroqKey() {
   showToast('✓ המפתח נשמר בהצלחה');
 }
 
-// ── File Upload & AI ──
 async function handleFile(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -437,7 +432,8 @@ async function handleFile(e) {
     const data = await analyzeDocument(b64data, mimeType);
     data.sourceFile = file.name;
 
-    const duplicate = records.find(r => r.orderNumber && r.orderNumber === data.orderNumber);
+    const duplicate = data.orderNumber && data.client &&
+      records.find(r => r.orderNumber === data.orderNumber && r.client === data.client);
     if (duplicate) {
       showDuplicateWarning(data.orderNumber, duplicate);
       return;
@@ -455,7 +451,6 @@ async function handleFile(e) {
 function showDuplicateWarning(orderNumber, existing) {
   const old = $('dupWarning');
   if (old) old.remove();
-
   const div = document.createElement('div');
   div.id = 'dupWarning';
   div.style.cssText = `
@@ -581,7 +576,6 @@ async function analyzeDocument(b64data, mimeType) {
   return parsed;
 }
 
-// ── Pending Modal ──
 function openPendingModal(d) {
   $('modalMeta').innerHTML = `
     <div class="meta-item"><label>לקוח</label><span>${d.client||'-'}</span></div>
@@ -622,7 +616,6 @@ async function saveOrder() {
   switchTab('records');
 }
 
-// ── Table ──
 function renderTable() {
   const q = $('searchInput').value.toLowerCase();
   const filtered = records.filter(r =>
@@ -690,7 +683,6 @@ function updateItemStatus(orderId, itemIdx, newStatus) {
   save(); renderTable(); renderDashboard();
 }
 
-// ── Dashboard ──
 function renderDashboard() {
   const total = records.length;
   const inWork = records.filter(r=>r.status==='בעבודה').length;
@@ -761,7 +753,6 @@ function renderDashboard() {
     ${pts.map((p,i)=>`<circle cx="${PAD+i*xStep}" cy="${yScale(Number(p.totalAmount||0))}" r="4" fill="#34a853"/>`).join('')}`;
 }
 
-// ── CSV Export ──
 function exportCSV() {
   if (!records.length) { showToast('אין נתונים לייצוא'); return; }
   const headers = ['Order_ID','Order_Number','Date','Client','Vendor','Item','Qty','Price','Total','Item_Status','Order_Status'];
@@ -778,7 +769,6 @@ function exportCSV() {
   showToast('CSV יוצא בהצלחה');
 }
 
-// ── Init ──
 renderDashboard();
 </script>
 </body>
