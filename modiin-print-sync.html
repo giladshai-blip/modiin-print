@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -363,8 +364,9 @@ window.deleteOrder = deleteOrder;
 window.updateItemStatus = updateItemStatus;
 window.renderTable = renderTable;
 window.forceUpload = forceUpload;
+window.saveGroqKey = saveGroqKey;
 // ── Config ──
-const FIREBASE_CONFIG = null; // 📦 או null לשימוש ב-localStorage
+const FIREBASE_CONFIG = null;
 const getGroqKey = () => localStorage.getItem('groq_api_key') || '';
 
 // ── State ──
@@ -417,19 +419,24 @@ async function handleFile(e) {
   if (!file) return;
   e.target.value = '';
 
-  const allowed = ['image/jpeg','image/png','image/webp','image/gif'];
+  const allowed = ['application/pdf','image/jpeg','image/png','image/webp','image/gif'];
   if (!allowed.includes(file.type)) {
-    showToast('⚠ סוג קובץ לא נתמך — השתמש ב-JPG, PNG, WebP');
+    showToast('⚠ סוג קובץ לא נתמך — השתמש ב-PDF, JPG, PNG, WebP');
     return;
   }
 
   setScanning(true);
   try {
-    const b64data = await readAsBase64raw(file);
-    const data = await analyzeDocument(b64data, file.type);
+    let b64data, mimeType;
+    if (file.type === 'application/pdf') {
+      ({ b64data, mimeType } = await pdfToImageBase64(file));
+    } else {
+      b64data = await readAsBase64raw(file);
+      mimeType = file.type;
+    }
+    const data = await analyzeDocument(b64data, mimeType);
     data.sourceFile = file.name;
 
-    // בדיקת כפילות לפי מספר הזמנה — אחרי הסריקה
     const duplicate = records.find(r => r.orderNumber && r.orderNumber === data.orderNumber);
     if (duplicate) {
       showDuplicateWarning(data.orderNumber, duplicate);
@@ -475,7 +482,6 @@ function showDuplicateWarning(orderNumber, existing) {
 
 function forceUpload() {
   $('dupWarning')?.remove();
-  // pendingData כבר מוכן — פותחים את המודל ישירות
   if (pendingData) openPendingModal(pendingData);
 }
 
@@ -493,7 +499,21 @@ function setScanning(on) {
   }
 }
 
-// מחזיר base64 נקי (ללא prefix data:...)
+async function pdfToImageBase64(file) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const page = await pdf.getPage(1);
+  const viewport = page.getViewport({ scale: 2 });
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+  const dataUrl = canvas.toDataURL('image/png');
+  return { b64data: dataUrl.split(',')[1], mimeType: 'image/png' };
+}
+
 function readAsBase64raw(file) {
   return new Promise((res, rej) => {
     const r = new FileReader();
@@ -678,7 +698,6 @@ function renderDashboard() {
   const done = records.filter(r=>r.status==='הושלם').length;
   const revenue = records.reduce((s,r)=>s+Number(r.totalAmount||0),0);
 
-  // Gauges
   const gauges = [
     { val: inWork, total, label: 'הזמנות בעבודה', color: '#1a73e8' },
     { val: partial, total, label: 'טופלו חלקית', color: '#fbbc04' },
@@ -709,7 +728,6 @@ function renderDashboard() {
     </div>
   </div>`;
 
-  // Bar chart by vendor
   const vendorMap = {};
   records.forEach(r => { vendorMap[r.vendor||'אחר'] = (vendorMap[r.vendor||'אחר']||0) + Number(r.totalAmount||0); });
   const vendors = Object.entries(vendorMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
@@ -722,7 +740,6 @@ function renderDashboard() {
     </div>`;
   }).join('') : '<div style="color:var(--text-3);font-size:13px;margin:auto">אין נתונים</div>';
 
-  // Line chart
   const pts = records.slice(0,20).reverse();
   const svg = $('lineChart');
   if (pts.length < 2) { svg.innerHTML = '<text x="300" y="110" text-anchor="middle" fill="#9aa0a6" font-family="Rubik" font-size="13">אין מספיק נתונים</text>'; return; }
@@ -752,7 +769,7 @@ function exportCSV() {
   records.forEach(o => (o.items||[]).forEach(it =>
     rows.push([o.id,o.orderNumber,o.date,o.client,o.vendor,it.description,it.quantity,it.unitPrice,it.total,it.status,o.status])
   ));
-  let csv = '\uFEFF' + headers.join(',') + '\n';
+  let csv = '﻿' + headers.join(',') + '\n';
   rows.forEach(r => { csv += r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',') + '\n'; });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'}));
