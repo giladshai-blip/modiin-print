@@ -129,7 +129,7 @@
   .empty p { font-size: 14px; font-weight: 500; }
   .menu-btn { display: none; align-items: center; justify-content: center; width: 40px; height: 40px; background: none; border: none; border-radius: 10px; cursor: pointer; color: var(--text-2); transition: background .15s; flex-shrink: 0; }
   .menu-btn:hover { background: var(--bg); }
-  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 39; animation: fadeIn .2s; }
+  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 39; }
   .sidebar-overlay.visible { display: block; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes zoomIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
@@ -151,11 +151,10 @@
     .line-svg { height: 160px; }
     .meta-grid { grid-template-columns: 1fr 1fr; }
     .modal { padding: 20px 16px; border-radius: 16px; max-height: 90dvh; overflow-y: auto; }
-    .items-list { max-height: 180px; }
     .modal-bg { padding: 12px; }
+    .items-list { max-height: 180px; }
     td { padding: 12px 14px; }
     thead th { padding: 10px 14px; }
-    #tab-settings .table-card { padding: 20px 16px; }
   }
   @media (max-width: 480px) {
     .search-wrap input { font-size: 12px; padding: 9px 36px 9px 10px; }
@@ -163,7 +162,6 @@
     .meta-grid { grid-template-columns: 1fr; }
     .modal-footer { flex-direction: column; align-items: stretch; gap: 14px; }
     .btn-save { width: 100%; text-align: center; }
-    .gauges-grid { grid-template-columns: 1fr 1fr; }
     table { min-width: 520px; }
   }
 </style>
@@ -200,7 +198,7 @@
 </aside>
 <div id="main">
   <header>
-    <button class="menu-btn" id="menuBtn" onclick="toggleSidebar()" aria-label="תפריט">
+    <button class="menu-btn" onclick="toggleSidebar()" aria-label="תפריט">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
     <div class="search-wrap">
@@ -470,7 +468,7 @@ function renderDashboard() {
   $('gaugesGrid').innerHTML=gauges.map(g=>{
     const pct=total?g.val/total:0, r=50, cx=55, cy=55, angle=Math.PI*pct;
     const ex=cx-r*Math.cos(angle), ey=cy-r*Math.sin(angle), large=pct>0.5?1:0;
-    const arc=pct>0?`M ${cx-r} ${cy} A ${r} ${r} 0 ${large} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`:'';
+    const arc=pct>0?`M ${cx-r} ${cy} A ${r} ${r} 0 ${large} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`:''
     return `<div class="gauge-card"><svg class="gauge-svg" viewBox="0 5 110 60"><path d="M 5 ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}" fill="none" stroke="#f1f3f4" stroke-width="10" stroke-linecap="round"/>${arc?`<path d="${arc}" fill="none" stroke="${g.color}" stroke-width="10" stroke-linecap="round"/>`:''}</svg><div class="gauge-val" style="color:${g.color}">${g.val}</div><div class="gauge-label">${g.label}</div></div>`;
   }).join('')+`<div class="gauge-card revenue-card" style="align-items:flex-start"><p class="label">מחזור הכנסות</p><div class="amount">₪${fmt(revenue)}</div><div class="revenue-badge"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>${total} הזמנות</div></div>`;
   const vendorMap={};
