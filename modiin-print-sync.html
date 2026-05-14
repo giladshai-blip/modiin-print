@@ -247,6 +247,11 @@
           <button onclick="clearAllData()" style="padding:10px 20px;background:#fff;color:var(--red);border:1px solid var(--red);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">מחק את כל ההזמנות</button>
           <p style="margin-top:8px;font-size:11px;color:var(--text-3)">פעולה זו תמחק את כל ההזמנות השמורות לצמיתות.</p>
         </div>
+        <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--border)">
+          <div style="margin-bottom:8px;font-size:13px;font-weight:600;color:var(--text-2)">גרסת דמו</div>
+          <button onclick="clearCache()" style="padding:10px 20px;background:#fff;color:var(--text-2);border:1px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>נקה קאש וטען מחדש</button>
+          <p style="margin-top:8px;font-size:11px;color:var(--text-3)">מוחק את כל הנתונים השמורים (הזמנות ומפתח API) וטוען את הגרסה העדכנית של האפליקציה.</p>
+        </div>
       </div>
     </div>
   </div>
@@ -281,6 +286,7 @@ window.renderTable = renderTable;
 window.forceUpload = forceUpload;
 window.saveGroqKey = saveGroqKey;
 window.clearAllData = clearAllData;
+window.clearCache = clearCache;
 window.toggleSidebar = toggleSidebar;
 window.closeSidebar = closeSidebar;
 
@@ -330,6 +336,12 @@ function clearAllData() {
   if (!confirm('למחוק את כל ההזמנות לצמיתות?')) return;
   records = []; save(); renderDashboard();
   showToast('✓ כל הנתונים נמחקו');
+}
+
+function clearCache() {
+  if (!confirm('לנקות את כל הנתונים (הזמנות + מפתח API) ולטעון מחדש?')) return;
+  localStorage.clear();
+  location.reload(true);
 }
 
 function saveGroqKey() {
@@ -465,7 +477,7 @@ function renderDashboard() {
   $('gaugesGrid').innerHTML=gauges.map(g=>{
     const pct=total?g.val/total:0, r=50, cx=55, cy=55, angle=Math.PI*pct;
     const ex=cx-r*Math.cos(angle), ey=cy-r*Math.sin(angle), large=pct>0.5?1:0;
-    const arc=pct>0?`M ${cx-r} ${cy} A ${r} ${r} 0 ${large} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`:'';
+    const arc=pct>0?`M ${cx-r} ${cy} A ${r} ${r} 0 ${large} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`:''
     return `<div class="gauge-card"><svg class="gauge-svg" viewBox="0 5 110 60"><path d="M 5 ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}" fill="none" stroke="#f1f3f4" stroke-width="10" stroke-linecap="round"/>${arc?`<path d="${arc}" fill="none" stroke="${g.color}" stroke-width="10" stroke-linecap="round"/>`:''}</svg><div class="gauge-val" style="color:${g.color}">${g.val}</div><div class="gauge-label">${g.label}</div></div>`;
   }).join('')+`<div class="gauge-card revenue-card" style="align-items:flex-start"><p class="label">מחזור הכנסות</p><div class="amount">₪${fmt(revenue)}</div><div class="revenue-badge"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>${total} הזמנות</div></div>`;
   const vendorMap={};
@@ -486,7 +498,7 @@ function exportCSV() {
   const headers=['Order_ID','Order_Number','Date','Client','Vendor','Item','Qty','Price','Total','Item_Status','Order_Status'], rows=[];
   records.forEach(o=>(o.items||[]).forEach(it=>rows.push([o.id,o.orderNumber,o.date,o.client,o.vendor,it.description,it.quantity,it.unitPrice,it.total,it.status,o.status])));
   let csv='﻿'+headers.join(',')+'\n';
-  rows.forEach(r=>{csv+=r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')+'\n';});
+  rows.forEach(r=>{csv+=r.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')+"\n";});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
   a.download=`modiin_orders_${Date.now()}.csv`; a.click();
