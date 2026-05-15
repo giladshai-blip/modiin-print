@@ -512,7 +512,7 @@ function renderDashboard() {
   $('gaugesGrid').innerHTML=gauges.map(g=>{
     const pct=total?g.val/total:0, r=50, cx=55, cy=55, angle=Math.PI*pct;
     const ex=cx-r*Math.cos(angle), ey=cy-r*Math.sin(angle), large=pct>0.5?1:0;
-    const arc=pct>0?`M ${cx-r} ${cy} A ${r} ${r} 0 ${large} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`:''
+    const arc=pct>0?`M ${cx-r} ${cy} A ${r} ${r} 0 ${large} 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`:'';
     return `<div class="gauge-card"><svg class="gauge-svg" viewBox="0 5 110 60"><path d="M 5 ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}" fill="none" stroke="#f1f3f4" stroke-width="10" stroke-linecap="round"/>${arc?`<path d="${arc}" fill="none" stroke="${g.color}" stroke-width="10" stroke-linecap="round"/>`:''}</svg><div class="gauge-val" style="color:${g.color}">${g.val}</div><div class="gauge-label">${g.label}</div></div>`;
   }).join('')+`<div class="gauge-card revenue-card" style="align-items:flex-start"><p class="label">מחזור הכנסות</p><div class="amount">₪${fmt(revenue)}</div><div class="revenue-badge"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>${total} הזמנות</div></div>`;
   const vendorMap={};
