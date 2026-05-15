@@ -21,7 +21,7 @@
     --shadow-lg: 0 4px 12px rgba(60,64,67,.15);
   }
   body { font-family: 'Rubik', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; overflow: hidden; }
-  #sidebar { width: var(--sidebar-w); background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px 12px; gap: 4px; flex-shrink: 0; transition: transform .25s; }
+  #sidebar { width: var(--sidebar-w); background: var(--surface); border-left: 1px solid var(--border); box-shadow: -2px 0 8px rgba(60,64,67,.06); display: flex; flex-direction: column; padding: 20px 12px; gap: 4px; flex-shrink: 0; transition: transform .25s; }
   .logo { display: flex; align-items: center; gap: 12px; padding: 12px 16px 24px; }
   .logo-icon { width: 40px; height: 40px; background: var(--blue); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 20px; }
   .logo-text h1 { font-size: 15px; font-weight: 700; line-height: 1.2; }
@@ -85,9 +85,10 @@
   .badge-green .badge-dot { background: var(--green); }
   .badge-gray .badge-dot { background: var(--text-3); }
   .total-cell { font-weight: 700; color: var(--text); }
-  .del-btn { background: none; border: none; color: var(--border); cursor: pointer; padding: 6px; border-radius: 8px; transition: color .15s, background .15s; opacity: 0; }
+  .del-btn { background: none; border: none; color: var(--text-3); cursor: pointer; padding: 6px; border-radius: 8px; transition: color .15s, background .15s, opacity .15s; opacity: 0; }
   tbody tr:hover .del-btn { opacity: 1; }
   .del-btn:hover { color: var(--red); background: #fce8e6; }
+  .del-btn:focus-visible { opacity: 1; }
   .expanded-row td { padding: 0; }
   .expanded-inner { padding: 12px 24px 20px; }
   .sub-table-wrap { background: var(--bg); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
@@ -120,13 +121,34 @@
   .btn-save { padding: 14px 36px; background: var(--blue); color: #fff; border-radius: 100px; font-size: 14px; font-weight: 700; font-family: inherit; border: none; cursor: pointer; box-shadow: 0 2px 8px rgba(26,115,232,.4); transition: background .15s, transform .1s; }
   .btn-save:hover { background: #1557b0; }
   .btn-save:active { transform: scale(.97); }
+  :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .btn-upload:focus-visible, .nav-item:focus-visible, .btn-save:focus-visible { outline-offset: 3px; }
+  .search-wrap input:focus-visible, .status-select:focus-visible { outline: none; }
   .toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: #202124; color: #fff; padding: 12px 28px; border-radius: 100px; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; box-shadow: var(--shadow-lg); z-index: 100; animation: slideDown .3s cubic-bezier(.4,0,.2,1); }
   .toast.hiding { animation: slideUp .3s forwards; }
-  .toast-icon { color: var(--green); }
+  .toast-icon { flex-shrink: 0; }
+  .toast--success { background: #1e7e34; }
+  .toast--error   { background: #c0392b; }
+  .toast--warning { background: #b45309; }
   .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
   .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; color: var(--text-3); gap: 12px; }
   .empty svg { opacity: .35; }
   .empty p { font-size: 14px; font-weight: 500; }
+  .settings-card { max-width: 520px; padding: 28px 24px; }
+  .settings-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
+  .settings-label { margin-bottom: 8px; font-size: 13px; font-weight: 600; color: var(--text-2); }
+  .settings-row { display: flex; gap: 8px; }
+  .settings-hint { margin-top: 8px; font-size: 11px; color: var(--text-3); }
+  .settings-section { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border); }
+  .settings-input { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; outline: none; transition: border-color .15s; }
+  .settings-input:focus { border-color: var(--blue); }
+  .btn-settings { padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; border: none; transition: opacity .15s; }
+  .btn-settings--primary { background: var(--blue); color: #fff; }
+  .btn-settings--primary:hover { opacity: .9; }
+  .btn-settings--danger { background: #fff; color: var(--red); border: 1px solid var(--red) !important; }
+  .btn-settings--danger:hover { background: #fce8e6; }
+  .btn-settings--neutral { background: #fff; color: var(--text-2); border: 1px solid var(--border) !important; display: inline-flex; align-items: center; gap: 8px; }
+  .btn-settings--neutral:hover { background: var(--bg); }
   .menu-btn { display: none; align-items: center; justify-content: center; width: 40px; height: 40px; background: none; border: none; border-radius: 10px; cursor: pointer; color: var(--text-2); transition: background .15s; flex-shrink: 0; }
   .menu-btn:hover { background: var(--bg); }
   .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 39; }
@@ -155,6 +177,8 @@
     .items-list { max-height: 180px; }
     td { padding: 12px 14px; }
     thead th { padding: 10px 14px; }
+    .del-btn { opacity: .35; color: var(--red); }
+    tbody tr:hover .del-btn { opacity: .8; }
   }
   @media (max-width: 480px) {
     .search-wrap input { font-size: 12px; padding: 9px 36px 9px 10px; }
@@ -234,23 +258,26 @@
       </div>
     </div>
     <div id="tab-settings" style="display:none">
-      <div class="table-card" style="max-width:520px;padding:28px 24px">
-        <h2 style="font-size:16px;font-weight:700;margin-bottom:20px">הגדרות מערכת</h2>
-        <div style="margin-bottom:8px;font-size:13px;font-weight:600;color:var(--text-2)">מפתח Groq API</div>
-        <div style="display:flex;gap:8px">
-          <input id="groqKeyInput" type="password" placeholder="gsk_..." style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;outline:none" />
-          <button onclick="saveGroqKey()" style="padding:10px 20px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">שמור</button>
+      <div class="table-card settings-card">
+        <h2 class="settings-title">הגדרות מערכת</h2>
+        <div class="settings-label">מפתח Groq API</div>
+        <div class="settings-row">
+          <input id="groqKeyInput" type="password" placeholder="gsk_..." class="settings-input" />
+          <button onclick="saveGroqKey()" class="btn-settings btn-settings--primary">שמור</button>
         </div>
-        <p style="margin-top:8px;font-size:11px;color:var(--text-3)">המפתח נשמר בדפדפן בלבד ולא נשלח לשום שרת. קבל מפתח חינם ב-console.groq.com</p>
-        <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--border)">
-          <div style="margin-bottom:8px;font-size:13px;font-weight:600;color:var(--text-2)">איפוס נתונים</div>
-          <button onclick="clearAllData()" style="padding:10px 20px;background:#fff;color:var(--red);border:1px solid var(--red);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">מחק את כל ההזמנות</button>
-          <p style="margin-top:8px;font-size:11px;color:var(--text-3)">פעולה זו תמחק את כל ההזמנות השמורות לצמיתות.</p>
+        <p class="settings-hint">המפתח נשמר בדפדפן בלבד ולא נשלח לשום שרת. קבל מפתח חינם ב-console.groq.com</p>
+        <div class="settings-section">
+          <div class="settings-label">איפוס נתונים</div>
+          <button onclick="clearAllData()" class="btn-settings btn-settings--danger">מחק את כל ההזמנות</button>
+          <p class="settings-hint">פעולה זו תמחק את כל ההזמנות השמורות לצמיתות.</p>
         </div>
-        <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--border)">
-          <div style="margin-bottom:8px;font-size:13px;font-weight:600;color:var(--text-2)">גרסת דמו</div>
-          <button onclick="clearCache()" style="padding:10px 20px;background:#fff;color:var(--text-2);border:1px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>נקה קאש וטען מחדש</button>
-          <p style="margin-top:8px;font-size:11px;color:var(--text-3)">מוחק את כל הנתונים השמורים (הזמנות ומפתח API) וטוען את הגרסה העדכנית של האפליקציה.</p>
+        <div class="settings-section">
+          <div class="settings-label">גרסת דמו</div>
+          <button onclick="clearCache()" class="btn-settings btn-settings--neutral">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            נקה קאש וטען מחדש
+          </button>
+          <p class="settings-hint">מוחק את כל הנתונים השמורים (הזמנות ומפתח API) וטוען את הגרסה העדכנית של האפליקציה.</p>
         </div>
       </div>
     </div>
@@ -268,7 +295,7 @@
   </div>
 </div>
 <div class="toast" id="toast" style="display:none">
-  <svg class="toast-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+  <span id="toastIcon" class="toast-icon" aria-hidden="true"></span>
   <span id="toastMsg"></span>
 </div>
 <script type="module">
@@ -301,9 +328,17 @@ const save = () => localStorage.setItem('modiin_orders', JSON.stringify(records)
 const uid  = () => Math.random().toString(36).slice(2,10);
 const $ = id => document.getElementById(id);
 
-function showToast(msg) {
-  const t = $('toast'); $('toastMsg').textContent = msg;
-  t.style.display = 'flex'; t.classList.remove('hiding');
+const TOAST_ICONS = {
+  success: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>',
+  error:   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  warning: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+};
+function showToast(msg, type='success') {
+  const t = $('toast');
+  $('toastMsg').textContent = msg;
+  $('toastIcon').innerHTML = TOAST_ICONS[type] || TOAST_ICONS.success;
+  t.className = 'toast' + (type !== 'success' ? ' toast--' + type : '');
+  t.style.display = 'flex';
   clearTimeout(t._timer);
   t._timer = setTimeout(() => { t.classList.add('hiding'); setTimeout(() => t.style.display='none', 300); }, 3000);
 }
@@ -335,7 +370,7 @@ function switchTab(tab) {
 function clearAllData() {
   if (!confirm('למחוק את כל ההזמנות לצמיתות?')) return;
   records = []; save(); renderDashboard();
-  showToast('✓ כל הנתונים נמחקו');
+  showToast('כל הנתונים נמחקו', 'success');
 }
 
 function clearCache() {
@@ -346,15 +381,15 @@ function clearCache() {
 
 function saveGroqKey() {
   const val = $('groqKeyInput').value.trim();
-  if (!val) { showToast('⚠ הכנס מפתח תקין'); return; }
+  if (!val) { showToast('הכנס מפתח תקין', 'warning'); return; }
   localStorage.setItem('groq_api_key', val);
-  showToast('✓ המפתח נשמר בהצלחה');
+  showToast('המפתח נשמר בהצלחה', 'success');
 }
 
 async function handleFile(e) {
   const file = e.target.files[0]; if (!file) return; e.target.value='';
   const allowed=['application/pdf','image/jpeg','image/png','image/webp','image/gif'];
-  if (!allowed.includes(file.type)) { showToast('⚠ סוג קובץ לא נתמך — השתמש ב-PDF, JPG, PNG, WebP'); return; }
+  if (!allowed.includes(file.type)) { showToast('סוג קובץ לא נתמך — השתמש ב-PDF, JPG, PNG, WebP', 'warning'); return; }
   setScanning(true);
   try {
     let b64data, mimeType;
@@ -365,7 +400,7 @@ async function handleFile(e) {
     const duplicate=data.orderNumber&&data.client&&records.find(r=>r.orderNumber===data.orderNumber&&r.client===data.client);
     if (duplicate) { showDuplicateWarning(data.orderNumber,duplicate); return; }
     pendingData=data; openPendingModal(data);
-  } catch(err) { showToast('⚠ שגיאה: '+err.message); }
+  } catch(err) { showToast('שגיאה: '+err.message, 'error'); }
   finally { setScanning(false); }
 }
 
@@ -439,7 +474,7 @@ async function saveOrder() {
   const order={...pendingData,id:uid(),totalAmount:total,status:'בעבודה',createdAt:new Date().toISOString(),sourceFile:pendingData.sourceFile||''};
   order.items=order.items.map(it=>({...it,status:'בעבודה'}));
   records.unshift(order); save(); closePendingModal();
-  showToast('הזמנה נפתחה בסטטוס "בעבודה"'); switchTab('records');
+  showToast('הזמנה נפתחה בסטטוס "בעבודה"', 'success'); switchTab('records');
 }
 
 function renderTable() {
@@ -494,7 +529,7 @@ function renderDashboard() {
 }
 
 function exportCSV() {
-  if (!records.length) { showToast('אין נתונים לייצוא'); return; }
+  if (!records.length) { showToast('אין נתונים לייצוא', 'warning'); return; }
   const headers=['Order_ID','Order_Number','Date','Client','Vendor','Item','Qty','Price','Total','Item_Status','Order_Status'], rows=[];
   records.forEach(o=>(o.items||[]).forEach(it=>rows.push([o.id,o.orderNumber,o.date,o.client,o.vendor,it.description,it.quantity,it.unitPrice,it.total,it.status,o.status])));
   let csv='﻿'+headers.join(',')+'\n';
@@ -502,7 +537,7 @@ function exportCSV() {
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
   a.download=`modiin_orders_${Date.now()}.csv`; a.click();
-  showToast('CSV יוצא בהצלחה');
+  showToast('CSV יוצא בהצלחה', 'success');
 }
 
 renderDashboard();
